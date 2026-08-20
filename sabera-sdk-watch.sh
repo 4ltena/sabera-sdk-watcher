@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
 #
 # sabera-sdk-watch.sh — sabera-sdk リポジトリを1分おきにポーリングし、
-# 更新があれば自動で pull する（macOS / Linux 用）。
+# 更新があれば自動で pull する(macOS / Linux 用)。
 #
 # 使い方:
 #   初回:   ./sabera-sdk-watch.sh /path/to/sabera-sdk
-#           （パスを省略すると対話的に尋ねる。以後は設定ファイルへ保存され、
-#             次回からは引数なしで前回のパスを自動で使う）
+#           (パスを省略すると対話的に尋ねる。以後は設定ファイルへ保存され、
+#             次回からは引数なしで前回のパスを自動で使う)
 #   以降:   ./sabera-sdk-watch.sh
 #   パスの再設定: ./sabera-sdk-watch.sh --set-path /new/path
 #
 #   フォアグラウンドで動き続ける。止めるには Ctrl-C。
 #   バックグラウンドで動かしたい場合は
 #     nohup ./sabera-sdk-watch.sh > /dev/null 2>&1 &
-#   か、macOS では launchd（LaunchAgent）に登録する。
+#   か、macOS では launchd(LaunchAgent)に登録する。
 #
 # 安全のための方針:
-#   - 変更するのはこのスクリプト自身の設定ファイル（$HOME/.config 以下）だけで、
+#   - 変更するのはこのスクリプト自身の設定ファイル($HOME/.config 以下)だけで、
 #     sabera-sdk 側の作業ツリーには pull 以外の書き込みを一切行わない。
 #   - 取得は git fetch と git pull --ff-only のみ。force pull や reset は
 #     行わない。fast-forward できない場合、または作業ツリーに変更がある場合は
@@ -89,11 +89,18 @@ elif [ -n "${1:-}" ]; then
 else
     SDK_PATH="$(load_path)"
     if [ -z "$SDK_PATH" ]; then
-        printf 'sabera-sdk フォルダの場所を入力してください: '
-        read -r SDK_PATH
-        if ! validate_repo "$SDK_PATH"; then
-            exit 1
-        fi
+        while true; do
+            printf 'sabera-sdk フォルダの場所を入力してください: '
+            read -r SDK_PATH
+            if [ -z "$SDK_PATH" ]; then
+                echo "入力が空です。中断します。" >&2
+                exit 1
+            fi
+            if validate_repo "$SDK_PATH"; then
+                break
+            fi
+            echo "もう一度入力してください。"
+        done
         save_path "$SDK_PATH"
     elif ! validate_repo "$SDK_PATH"; then
         echo "保存済みのパスが無効です。$0 --set-path /path/to/sabera-sdk で設定し直してください。" >&2
@@ -101,7 +108,7 @@ else
     fi
 fi
 
-log "監視を開始します: $SDK_PATH（${POLL_INTERVAL_SECONDS}秒おき）"
+log "監視を開始します: ${SDK_PATH} (${POLL_INTERVAL_SECONDS}秒おき)"
 
 while true; do
     if ! git -C "$SDK_PATH" fetch --quiet 2>>"$LOG_FILE"; then
@@ -113,7 +120,7 @@ while true; do
             LOCAL="$(git -C "$SDK_PATH" rev-parse @ 2>/dev/null)"
             REMOTE="$(git -C "$SDK_PATH" rev-parse '@{u}' 2>/dev/null)"
             if [ -z "$LOCAL" ] || [ -z "$REMOTE" ]; then
-                log "ブランチの追跡状態を確認できませんでした（upstream 未設定の可能性）"
+                log "ブランチの追跡状態を確認できませんでした(upstream 未設定の可能性)"
             elif [ "$LOCAL" != "$REMOTE" ]; then
                 if git -C "$SDK_PATH" pull --ff-only --quiet 2>>"$LOG_FILE"; then
                     NEW="$(git -C "$SDK_PATH" rev-parse --short HEAD 2>/dev/null)"

@@ -1,12 +1,12 @@
 <#
 .SYNOPSIS
-    sabera-sdk リポジトリを1分おきにポーリングし、更新があれば自動で pull する（Windows 用）。
+    sabera-sdk リポジトリを1分おきにポーリングし、更新があれば自動で pull する(Windows 用)。
 
 .DESCRIPTION
     使い方:
       初回:   .\sabera-sdk-watch.ps1 -SdkPath "C:\path\to\sabera-sdk"
-              （省略すると対話的に尋ねる。以後は設定ファイルへ保存され、
-                次回からは引数なしで前回のパスを自動で使う）
+              (省略すると対話的に尋ねる。以後は設定ファイルへ保存され、
+                次回からは引数なしで前回のパスを自動で使う)
       以降:   .\sabera-sdk-watch.ps1
       パスの再設定: .\sabera-sdk-watch.ps1 -SetPath "C:\new\path"
 
@@ -21,7 +21,7 @@
 
 .NOTES
     安全のための方針:
-      - 変更するのはこのスクリプト自身の設定ファイル（%USERPROFILE%\.config 以下）
+      - 変更するのはこのスクリプト自身の設定ファイル(%USERPROFILE%\.config 以下)
         だけで、sabera-sdk 側の作業ツリーには pull 以外の書き込みを一切行わない。
       - 取得は git fetch と git pull --ff-only のみ。force pull や reset は
         行わない。fast-forward できない場合、または作業ツリーに変更がある場合は
@@ -87,8 +87,15 @@ if ($SdkPath) {
 } else {
     $SdkPath = Read-SavedPath
     if (-not $SdkPath) {
-        $SdkPath = Read-Host "sabera-sdk フォルダの場所を入力してください"
-        if (-not (Test-Repo -Path $SdkPath)) { exit 1 }
+        while ($true) {
+            $SdkPath = Read-Host "sabera-sdk フォルダの場所を入力してください"
+            if (-not $SdkPath) {
+                Write-Error "入力が空です。中断します。"
+                exit 1
+            }
+            if (Test-Repo -Path $SdkPath) { break }
+            Write-Host "もう一度入力してください。"
+        }
         Save-SdkPath -Path $SdkPath
     } elseif (-not (Test-Repo -Path $SdkPath)) {
         Write-Error "保存済みのパスが無効です。.\sabera-sdk-watch.ps1 -SetPath C:\path\to\sabera-sdk で設定し直してください。"
@@ -96,7 +103,7 @@ if ($SdkPath) {
     }
 }
 
-Write-Log "監視を開始します: $SdkPath（${PollIntervalSeconds}秒おき）"
+Write-Log ("監視を開始します: {0} ({1}秒おき)" -f $SdkPath, $PollIntervalSeconds)
 
 while ($true) {
     git -C $SdkPath fetch --quiet 2>> $LogFile
@@ -110,7 +117,7 @@ while ($true) {
             $localRev = git -C $SdkPath rev-parse '@' 2>$null
             $remoteRev = git -C $SdkPath rev-parse '@{u}' 2>$null
             if (-not $localRev -or -not $remoteRev) {
-                Write-Log "ブランチの追跡状態を確認できませんでした（upstream 未設定の可能性）"
+                Write-Log "ブランチの追跡状態を確認できませんでした(upstream 未設定の可能性)"
             } elseif ($localRev -ne $remoteRev) {
                 git -C $SdkPath pull --ff-only --quiet 2>> $LogFile
                 if ($LASTEXITCODE -eq 0) {
